@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Via di Francesco - 순례자 여정 기록</title>
+    <!-- Tailwind CSS CDN (UI 스타일링용) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <!-- Leaflet.js (지도 렌더링용 CDN) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        #map { height: 250px; border-radius: 0.75rem; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 flex justify-center items-center min-h-screen p-0 sm:p-4">
+
+    <!-- 모바일 프레임 컨테이너 -->
+    <div class="w-full max-w-md bg-white shadow-xl rounded-none sm:rounded-3xl overflow-hidden flex flex-col h-screen sm:h-[850px]">
+        
+        <!-- 상단 헤더 -->
+        <header class="bg-amber-700 text-white p-4 text-center shadow-md">
+            <h1 class="text-lg font-bold">🕊️ Via di Francesco</h1>
+            <p class="text-xs text-amber-100">로마에서 아시시까지의 영적 여정</p>
+        </header>
+
+        <!-- 탭 네비게이션 -->
+        <nav class="flex border-b border-slate-200 bg-slate-100 text-sm font-medium">
+            <button onclick="switchTab('map')" id="btn-map" class="flex-1 py-3 text-center text-amber-700 border-b-2 border-amber-700 bg-white">🗺️ 지도 & 코스</button>
+            <button onclick="switchTab('tracking')" id="btn-tracking" class="flex-1 py-3 text-center text-slate-500">📊 트래킹</button>
+            <button onclick="switchTab('journal')" id="btn-journal" class="flex-1 py-3 text-center text-slate-500">📝 순례일지</button>
+        </nav>
+
+        <!-- 메인 콘텐츠 영역 -->
+        <main class="flex-1 overflow-y-auto p-4 space-y-4">
+
+            <!-- 1. 지도 탭 -->
+            <div id="tab-map" class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <h2 class="font-bold text-slate-700">오프라인 경로 및 성소</h2>
+                    <span class="text-xs bg-amber-100 text-amber-800 px-2 py-1 rounded-full">유연한 일정 모드</span>
+                </div>
+                <!-- 지도 컴포넌트 -->
+                <div id="map" class="shadow-inner"></div>
+                <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 text-xs text-amber-900 leading-relaxed">
+                    💡 <strong>Tip:</strong> 컨디션에 따라 일정이 변경되면 하단 트래킹 및 일지에서 날짜별로 유연하게 기록을 수정할 수 있습니다.
+                </div>
+            </div>
+
+            <!-- 2. 트래킹 탭 (거리 및 걸음수) -->
+            <div id="tab-tracking" class="hidden space-y-3">
+                <h2 class="font-bold text-slate-700">오늘의 순례 데이터</h2>
+                
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+                        <p class="text-xs text-amber-600 font-medium">이동 거리</p>
+                        <p id="stat-distance" class="text-2xl font-bold text-amber-900 mt-1">18.5 <span class="text-sm font-normal">km</span></p>
+                    </div>
+                    <div class="bg-amber-50 p-4 rounded-2xl border border-amber-100 text-center">
+                        <p class="text-xs text-amber-600 font-medium">걸음 수</p>
+                        <p id="stat-steps" class="text-2xl font-bold text-amber-900 mt-1">24,350 <span class="text-sm font-normal">보</span></p>
+                    </div>
+                </div>
+
+                <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm space-y-3">
+                    <h3 class="text-sm font-bold text-slate-700">📅 구간 일정 유연 조율</h3>
+                    <div class="space-y-2 text-xs">
+                        <div class="flex justify-between items-center p-2 bg-slate-50 rounded-lg">
+                            <span>Day 01: 로마 체류 (바티칸)</span>
+                            <span class="text-emerald-600 font-semibold">완료</span>
+                        </div>
+                        <div class="flex justify-between items-center p-2 bg-amber-50 border border-amber-300 rounded-lg">
+                            <span>Day 05: 몬테로톤도 ➔ 리에티</span>
+                            <span class="text-amber-700 font-semibold">진행 중 (수정 가능)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. 일별 메모 탭 -->
+            <div id="tab-journal" class="hidden space-y-3">
+                <h2 class="font-bold text-slate-700">순례 묵상 일지</h2>
+                
+                <div class="space-y-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">날짜 선택</label>
+                        <input type="date" id="journal-date" class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 mb-1">오늘의 묵상 및 메모</label>
+                        <textarea id="journal-text" rows="4" placeholder="오늘 걸었던 길에서 느낀 은총과 단상을 기록하세요..." class="w-full p-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-600"></textarea>
+                    </div>
+                    <button onclick="saveJournal()" class="w-full bg-amber-700 text-white py-2.5 rounded-xl font-medium text-sm hover:bg-amber-800 transition">일지 저장하기</button>
+                </div>
+
+                <div id="journal-list" class="space-y-2">
+                    <!-- 저장된 일지가 동적으로 표시되는 영역 -->
+                </div>
+            </div>
+
+        </main>
+
+        <!-- 하단 풋터 정보 -->
+        <footer class="p-3 bg-slate-100 text-center text-xs text-slate-400 border-t border-slate-200">
+            Via di Francesco Pilgrim App v1.0
+        </footer>
+
+    </div>
+
+    <!-- JavaScript 로직 -->
+    <script>
+        // 탭 전환 기능
+        function switchTab(tabName) {
+            ['map', 'tracking', 'journal'].forEach(t => {
+                document.getElementById(`tab-${t}`).classList.add('hidden');
+                document.getElementById(`btn-${t}`).className = "flex-1 py-3 text-center text-slate-500 border-b-2 border-transparent";
+            });
+            document.getElementById(`tab-${tabName}`).classList.remove('hidden');
+            document.getElementById(`btn-${tabName}`).className = "flex-1 py-3 text-center text-amber-700 border-b-2 border-amber-700 bg-white font-medium";
+
+            // 지도가 탭 변경 시 깨지는 현상 방지
+            if(tabName === 'map') {
+                setTimeout(() => { map.invalidateSize(); }, 150);
+            }
+        }
+
+        // Leaflet 지도 초기화 (로마 ~ 아시시 중심 좌표)
+        const map = L.map('map').setView([42.5, 12.6], 8);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
+
+        // 주요 거점 마커 표시 (로마, 리에티, 아시시)
+        L.marker([41.9028, 12.4964]).addTo(map).bindPopup('<b>로마 (출발)</b><br>바티칸 및 라테라노 대성당');
+        L.marker([42.4048, 12.8629]).addTo(map).bindPopup('<b>리에티 (Rieti)</b><br>성스러운 계곡 (Valle Santa)');
+        L.marker([43.0700, 12.6190]).addTo(map).bindPopup('<b>아시시 (Assisi)</b><br>성 프란치스코 대성당 (도착)');
+
+        // 간단한 일지 저장 기능 (LocalStorage 활용)
+        function saveJournal() {
+            const date = document.getElementById('journal-date').value;
+            const text = document.getElementById('journal-text').value;
+
+            if(!date || !text) {
+                alert('날짜와 내용을 모두 입력해주세요.');
+                return;
+            }
+
+            const journalList = document.getElementById('journal-list');
+            const item = document.createElement('div');
+            item.className = "p-3 bg-amber-50/50 border border-amber-200 rounded-xl text-xs space-y-1";
+            item.innerHTML = `<p class="font-bold text-amber-900">${date}</p><p class="text-slate-700">${text}</p>`;
+            
+            journalList.prepend(item);
+            document.getElementById('journal-text').value = '';
+            alert('일지가 성공적으로 저장되었습니다.');
+        }
+    </script>
+</body>
+</html>
